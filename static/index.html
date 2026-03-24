@@ -1,0 +1,389 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>IQSystems - Control de Asistencia</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Segoe UI', sans-serif;
+      background: #0f172a;
+      color: #e2e8f0;
+      min-height: 100vh;
+    }
+
+    header {
+      background: #1e293b;
+      padding: 16px 32px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-bottom: 1px solid #334155;
+    }
+
+    header h1 { font-size: 1.2rem; font-weight: 600; color: #f1f5f9; }
+    header span { font-size: 0.85rem; color: #64748b; }
+
+    .layout {
+      display: grid;
+      grid-template-columns: 1fr 380px;
+      gap: 24px;
+      padding: 24px 32px;
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+
+    /* ── Cámara ── */
+    .camera-section { display: flex; flex-direction: column; gap: 16px; }
+
+    .camera-wrapper {
+      position: relative;
+      background: #1e293b;
+      border-radius: 16px;
+      overflow: hidden;
+      border: 2px solid #334155;
+      aspect-ratio: 4/3;
+    }
+
+    #video {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+      transform: scaleX(-1);
+    }
+
+    #canvas { display: none; }
+
+    .result-overlay {
+      position: absolute;
+      bottom: 0; left: 0; right: 0;
+      padding: 16px 20px;
+      background: linear-gradient(transparent, rgba(0,0,0,0.85));
+      transition: all 0.3s;
+    }
+
+    .result-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 16px;
+      border-radius: 24px;
+      font-weight: 600;
+      font-size: 1rem;
+      opacity: 0;
+      transform: translateY(8px);
+      transition: all 0.3s;
+    }
+
+    .result-badge.show { opacity: 1; transform: translateY(0); }
+    .result-badge.success { background: #16a34a; color: #fff; }
+    .result-badge.error   { background: #dc2626; color: #fff; }
+    .result-badge.warning { background: #d97706; color: #fff; }
+
+    .scan-btn {
+      width: 100%;
+      padding: 14px;
+      border-radius: 12px;
+      border: none;
+      background: #3b82f6;
+      color: #fff;
+      font-size: 1rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.2s, transform 0.1s;
+    }
+
+    .scan-btn:hover  { background: #2563eb; }
+    .scan-btn:active { transform: scale(0.98); }
+    .scan-btn:disabled { background: #475569; cursor: not-allowed; }
+
+    /* ── Panel derecho ── */
+    .side-panel { display: flex; flex-direction: column; gap: 16px; }
+
+    .card {
+      background: #1e293b;
+      border-radius: 16px;
+      border: 1px solid #334155;
+      overflow: hidden;
+    }
+
+    .card-header {
+      padding: 14px 20px;
+      border-bottom: 1px solid #334155;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .card-header h2 { font-size: 0.9rem; font-weight: 600; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.05em; }
+
+    .card-body { padding: 16px 20px; }
+
+    /* Registro de hoy */
+    #attendance-list { display: flex; flex-direction: column; gap: 8px; max-height: 300px; overflow-y: auto; }
+
+    .attendance-item {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 10px 12px;
+      background: #0f172a;
+      border-radius: 10px;
+    }
+
+    .event-dot {
+      width: 10px; height: 10px;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+
+    .event-dot.entrada { background: #22c55e; }
+    .event-dot.salida  { background: #f97316; }
+
+    .att-info { flex: 1; }
+    .att-name { font-size: 0.9rem; font-weight: 600; }
+    .att-meta { font-size: 0.75rem; color: #64748b; }
+    .att-time { font-size: 0.8rem; color: #94a3b8; }
+
+    /* Registrar empleado */
+    .form-group { display: flex; flex-direction: column; gap: 6px; margin-bottom: 12px; }
+    .form-group label { font-size: 0.8rem; color: #94a3b8; }
+
+    .form-group input {
+      padding: 8px 12px;
+      border-radius: 8px;
+      border: 1px solid #334155;
+      background: #0f172a;
+      color: #f1f5f9;
+      font-size: 0.9rem;
+    }
+
+    .form-group input:focus { outline: none; border-color: #3b82f6; }
+
+    .register-btn {
+      width: 100%;
+      padding: 10px;
+      border-radius: 8px;
+      border: none;
+      background: #0f172a;
+      color: #94a3b8;
+      border: 1px solid #334155;
+      font-size: 0.9rem;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .register-btn:hover { background: #1e293b; color: #f1f5f9; border-color: #3b82f6; }
+
+    .empty-msg { color: #475569; font-size: 0.85rem; text-align: center; padding: 16px; }
+
+    .refresh-btn {
+      background: none;
+      border: none;
+      color: #64748b;
+      cursor: pointer;
+      font-size: 0.8rem;
+      padding: 2px 8px;
+      border-radius: 6px;
+      transition: color 0.2s;
+    }
+    .refresh-btn:hover { color: #f1f5f9; }
+
+    @media (max-width: 768px) {
+      .layout { grid-template-columns: 1fr; padding: 16px; }
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <h1>IQSystems — Control de Asistencia</h1>
+  <span id="current-date"></span>
+</header>
+
+<div class="layout">
+
+  <!-- Cámara -->
+  <div class="camera-section">
+    <div class="camera-wrapper">
+      <video id="video" autoplay playsinline></video>
+      <canvas id="canvas"></canvas>
+      <div class="result-overlay">
+        <div class="result-badge" id="result-badge">—</div>
+      </div>
+    </div>
+    <button class="scan-btn" id="scan-btn" onclick="scanFace()">Escanear rostro</button>
+  </div>
+
+  <!-- Panel lateral -->
+  <div class="side-panel">
+
+    <!-- Registro del día -->
+    <div class="card">
+      <div class="card-header">
+        <h2>Registros de hoy</h2>
+        <button class="refresh-btn" onclick="loadAttendance()">↻ Actualizar</button>
+      </div>
+      <div class="card-body">
+        <div id="attendance-list">
+          <p class="empty-msg">Cargando...</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Registrar empleado -->
+    <div class="card">
+      <div class="card-header">
+        <h2>Registrar empleado</h2>
+      </div>
+      <div class="card-body">
+        <div class="form-group">
+          <label>ID del empleado</label>
+          <input type="text" id="emp-id" placeholder="Ej: EMP001 o Simon" />
+        </div>
+        <div class="form-group">
+          <label>Foto del empleado</label>
+          <input type="file" id="emp-photo" accept="image/*" />
+        </div>
+        <button class="register-btn" onclick="registerEmployee()">+ Registrar</button>
+        <p id="register-msg" style="margin-top:10px; font-size:0.82rem; color:#64748b;"></p>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+  // ── Fecha actual ──
+  const dateEl = document.getElementById('current-date');
+  const updateClock = () => {
+    dateEl.textContent = new Date().toLocaleString('es-CO', {
+      weekday: 'long', year: 'numeric', month: 'long', day: 'numeric',
+      hour: '2-digit', minute: '2-digit'
+    });
+  };
+  updateClock();
+  setInterval(updateClock, 1000);
+
+  // ── Cámara ──
+  const video = document.getElementById('video');
+  const canvas = document.getElementById('canvas');
+
+  navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' } })
+    .then(stream => { video.srcObject = stream; })
+    .catch(() => showResult('No se pudo acceder a la cámara', 'error'));
+
+  // ── Escanear rostro ──
+  async function scanFace() {
+    const btn = document.getElementById('scan-btn');
+    btn.disabled = true;
+    btn.textContent = 'Escaneando...';
+
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
+    canvas.getContext('2d').drawImage(video, 0, 0);
+
+    canvas.toBlob(async (blob) => {
+      const form = new FormData();
+      form.append('image', blob, 'frame.jpg');
+
+      try {
+        const res = await fetch('/api/scan', { method: 'POST', body: form });
+        const data = await res.json();
+
+        if (data.recognized && !data.cooldown) {
+          const icon = data.event === 'ENTRADA' ? '→' : '←';
+          showResult(`${icon} ${data.event}: ${data.employee_id} (${data.confidence}%)`, 'success');
+          loadAttendance();
+        } else if (data.cooldown) {
+          showResult(`Ya registrado recientemente`, 'warning');
+        } else {
+          showResult('Rostro no reconocido', 'error');
+        }
+      } catch {
+        showResult('Error al conectar con el servidor', 'error');
+      }
+
+      setTimeout(() => {
+        btn.disabled = false;
+        btn.textContent = 'Escanear rostro';
+      }, 2000);
+    }, 'image/jpeg', 0.9);
+  }
+
+  function showResult(msg, type) {
+    const badge = document.getElementById('result-badge');
+    badge.textContent = msg;
+    badge.className = `result-badge show ${type}`;
+    setTimeout(() => badge.classList.remove('show'), 4000);
+  }
+
+  // ── Registros de asistencia ──
+  async function loadAttendance() {
+    const list = document.getElementById('attendance-list');
+    try {
+      const res = await fetch('/api/attendance/today');
+      const data = await res.json();
+
+      if (!data.records.length) {
+        list.innerHTML = '<p class="empty-msg">Sin registros por hoy</p>';
+        return;
+      }
+
+      list.innerHTML = data.records.slice().reverse().map(r => {
+        const hora = r.timestamp.split(' ')[1] || r.timestamp;
+        const tipo = r.event.toLowerCase();
+        return `
+          <div class="attendance-item">
+            <div class="event-dot ${tipo}"></div>
+            <div class="att-info">
+              <div class="att-name">${r.employee_id}</div>
+              <div class="att-meta">${r.event} · ${r.confidence}</div>
+            </div>
+            <div class="att-time">${hora}</div>
+          </div>`;
+      }).join('');
+    } catch {
+      list.innerHTML = '<p class="empty-msg">Error al cargar registros</p>';
+    }
+  }
+
+  loadAttendance();
+  setInterval(loadAttendance, 15000);
+
+  // ── Registrar empleado ──
+  async function registerEmployee() {
+    const id = document.getElementById('emp-id').value.trim();
+    const file = document.getElementById('emp-photo').files[0];
+    const msg = document.getElementById('register-msg');
+
+    if (!id || !file) { msg.textContent = 'Completa el ID y la foto.'; return; }
+
+    msg.textContent = 'Registrando...';
+    const form = new FormData();
+    form.append('employee_id', id);
+    form.append('image', file);
+
+    try {
+      const res = await fetch('/api/employees', { method: 'POST', body: form });
+      const data = await res.json();
+      if (data.success) {
+        msg.style.color = '#22c55e';
+        msg.textContent = `✓ ${id} registrado correctamente`;
+        document.getElementById('emp-id').value = '';
+        document.getElementById('emp-photo').value = '';
+      } else {
+        msg.style.color = '#dc2626';
+        msg.textContent = 'Error: ' + (data.detail || 'intenta de nuevo');
+      }
+    } catch {
+      msg.style.color = '#dc2626';
+      msg.textContent = 'Error al conectar con el servidor';
+    }
+  }
+</script>
+</body>
+</html>
