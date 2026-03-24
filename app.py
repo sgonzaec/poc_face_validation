@@ -45,12 +45,19 @@ async def scan_face(image: UploadFile = File(...)):
     Recibe una imagen desde el navegador, la busca en Rekognition
     y registra la asistencia si se reconoce al empleado.
     """
+    import traceback
     from rekognition.recognize import search_face_in_collection
     from rekognition.attendance import register_event
 
-    image_bytes = await image.read()
+    try:
+        image_bytes = await image.read()
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error leyendo imagen: {str(e)}")
 
-    result = search_face_in_collection(image_bytes)
+    try:
+        result = search_face_in_collection(image_bytes)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error en Rekognition: {traceback.format_exc()}")
 
     if not result:
         return {"recognized": False, "message": "Rostro no reconocido"}
