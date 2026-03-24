@@ -4,7 +4,6 @@ Captura frames, los envía a Rekognition y retorna el ID del empleado si es reco
 """
 
 import boto3
-import cv2
 import os
 import io
 from typing import Optional
@@ -24,6 +23,7 @@ def get_client():
 
 def frame_to_bytes(frame) -> bytes:
     """Convierte un frame de OpenCV a bytes JPEG."""
+    import cv2
     img = Image.fromarray(cv2.cvtColor(frame, cv2.COLOR_BGR2RGB))
     buffer = io.BytesIO()
     img.save(buffer, format="JPEG")
@@ -66,6 +66,7 @@ def search_face_in_collection(image_bytes: bytes) -> Optional[dict]:
 
 def draw_result(frame, result: Optional[dict], cooldown_active: bool = False):
     """Dibuja el resultado del reconocimiento sobre el frame."""
+    import cv2
     h, w = frame.shape[:2]
 
     if cooldown_active:
@@ -98,6 +99,7 @@ def capture_and_recognize(on_recognized_callback=None):
         on_recognized_callback: función que se llama cuando se reconoce un empleado.
                                  Recibe el dict con employee_id y confidence.
     """
+    import cv2
     cap = cv2.VideoCapture(0)
 
     if not cap.isOpened():
