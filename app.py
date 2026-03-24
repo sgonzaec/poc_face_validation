@@ -144,6 +144,17 @@ def delete_employee(employee_id: str):
     return {"success": True, "employee_id": employee_id}
 
 
+@app.post("/api/setup")
+def setup_collection():
+    """Crea la colección en Rekognition si no existe."""
+    from rekognition.collection import create_collection
+    try:
+        create_collection()
+        return {"success": True, "message": "Colección lista"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 if __name__ == "__main__":
     import uvicorn
     port = int(os.getenv("PORT", 8000))
