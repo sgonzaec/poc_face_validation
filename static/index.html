@@ -272,9 +272,21 @@
   const video = document.getElementById('video');
   const canvas = document.getElementById('canvas');
 
-  navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' } })
-    .then(stream => { video.srcObject = stream; })
-    .catch(() => showResult('No se pudo acceder a la cámara', 'error'));
+  if (location.protocol !== 'https:' && location.hostname !== 'localhost') {
+    document.getElementById('scan-btn').disabled = true;
+    showResult('Se requiere HTTPS para acceder a la cámara', 'error');
+  } else {
+    navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' } })
+      .then(stream => { video.srcObject = stream; })
+      .catch(err => {
+        document.getElementById('scan-btn').disabled = true;
+        if (err.name === 'NotAllowedError') {
+          showResult('Permiso de cámara denegado — permite el acceso en tu navegador', 'error');
+        } else {
+          showResult('No se pudo acceder a la cámara', 'error');
+        }
+      });
+  }
 
   // ── Escanear rostro ──
   async function scanFace() {
